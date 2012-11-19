@@ -1,0 +1,62 @@
+# Blosxom Plugin : bracket_fep
+# Author(s) : kay <info@ellinikonblue.com>
+# Version : 2007-11-23
+package bracket_fep;
+
+# ---------------------------------------
+# Configuration Variable
+my $bfep_dir = "$blosxom::plugin_dir/bfep"; # bfep plug-in install directory
+
+# ---------------------------------------
+# Variable Definition
+my @bfeps;
+my %bfeps;
+
+# $pattern;
+# ---------------------------------------
+# Main Routines
+$bfep_dir =~ s!/$!!;
+
+sub start {
+  return 0 unless $bfep_dir;                # Directory path for bfep defined?
+  if (!-e $bfep_dir ) {                     # Directory for bfep existed?
+    my $mkdir_r = mkdir( $bfep_dir, 0755 ); # if not exist, make diretory for bfep.
+    $mkdir_r or return 0;
+  }
+
+  # Plugins for blacket_fep search
+  if ( -e $bfep_dir and opendir BPLUGINS, $bfep_dir ) {
+    foreach my $bfep ( grep { /^\w+$/ && -f "$bfep_dir/$_"  } sort readdir(BPLUGINS) ) {
+      my ( $bfep_name, $off ) = $bfep =~ /^\d*(\w+?)(_?)$/;
+      my $on_off = $off eq '_' ? -1 : 1;
+      require "$bfep_dir/$bfep";
+      $bfep_name->start() and  ( $bfeps{$bfep_name} = $on_off ) and push @bfeps, $bfep_name;
+    }
+    closedir BPLUGINS;
+  }
+  return 0 if ( !keys( %bfeps ) ); # if no bfep, bracket_fep is unavailable.
+
+  return 1;
+}
+
+sub story {
+  my ( $pkg, $path, $filename, $story_ref, $title_ref, $body_ref ) = @_;
+
+  $$body_ref =~ s/\[(.+?)\]/callbfep($1)/gei;
+
+  return 1;
+}
+
+sub callbfep {
+  my ( $pattern ) = @_;
+  my $rtn;
+
+  foreach my $bfep ( @bfeps ) {
+    $bfeps{ $bfep } > 0 and $bfep->can('story') and $rtn = $bfep->story( $pattern ) and last;
+  }
+  $rtn = "[$pattern]" if ( !$rtn );
+
+  return $rtn;
+}
+
+1;

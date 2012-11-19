@@ -1,0 +1,109 @@
+# Bracket Front End Plugin for blosxom: bsnap_hs
+# info@ellinikonblue.com
+# Version: 2007-09-04
+#
+# This script is encoded in UTF-8
+# 【注意事項】
+# ※ このプラグインには Highslide JS ライブラリ (JavaScript) が必要です。
+# Highslide JS http://vikjavev.no/highslide/
+package bsnap_hs;
+
+#---------------------------------------
+# Configurable Variables
+#
+my @image_exts = ( 'jpg', 'jpeg', 'png' , 'gif' );
+# Directories Settings
+my $include_dir = "/var/www/html/blosxom/lib";
+my $include_url = "http://www.ellinikonblue.com/blosxom/lib";
+#
+my $image_dirname     = "image";     # 画像ディレクトリ名
+my $thumbnail_dirname = "thumbnail"; # サムネイルディレクトリ名
+# 実際には各ディレクトリは、
+#   画像用ディレクトリが       $include_dir/$image_dirname
+#   サムネイル用ディレクトリが $include_dir/$image_dirname/$thumbnail_dirname
+# となります。
+#
+my $class = "snaphs"; # CSS 用クラス名
+#---------------------------------------
+# Main routine for bfep
+#
+$include_dir =~ s!/$!!; $include_url =~ s!/$!!;
+
+sub start {
+  # ディレクトリ設定チェックおよび準備
+  return 0 if ( !-e $include_dir );
+  if ( !-e "$include_dir/$image_dirname" ) {
+    my $mkdir_r = mkdir( "$include_dir/$image_dirname", 0755 );
+    $mkdir_r or return 0;
+  }
+  if ( !-e "$include_dir/$image_dirname/$thumbnail_dirname" ) {
+    my $mkdir_r = mkdir( "$include_dir/$image_dirname/$thumbnail_dirname", 0755 );
+    $mkdir_r or return 0;
+  }
+
+  return 1;
+}
+
+sub story {
+  my ( $pkg, $pattern ) = @_;
+  my $exts = join( "|",  @image_exts );
+  my $filename;
+  my $rtn = '';
+
+  return 0 if ( $pattern !~ m/^([\/\w\-\!\#\$\%\'\^\(\)\{\}\~]+\.(?:$exts))$/is );
+
+  $filename = $1;
+
+  return 0 if ( !-e "$include_dir/$image_dirname/$filename" );
+
+  $rtn  = "<div class=\"$class\">\n";
+  if ( -e "$include_dir/$image_dirname/$thumbnail_dirname/$filename" ) {
+  # サムネイル画像がある場合
+    $rtn .= "  <a href=\"$include_url/$image_dirname/$filename\"\n";
+    $rtn .= '    class="highslide" onclick="return hs.expand(this)">'."<img\n";
+    $rtn .= "    src=\"$include_url/$image_dirname/$thumbnail_dirname/$filename\"\n";
+    $rtn .= "    alt=\"Image:$filename\" /></a>\n";
+  } else {
+  # サムネイル画像がない場合
+    $rtn .= "  <img src=\"$include_url/$image_dirname/$filename\" alt=\"Image:$filename\" />\n";
+  }
+  $rtn .= "</div>";
+
+  return $rtn;
+}
+
+# 【参考】 Highslide JS に関する設定
+# このプラグインの動作には highslide JS の導入が必須です。
+# 以下の手順を参考に highslide JS をあらかじめ導入しておいてください。
+#
+# 1. Highslide JS http://vikjavev.no/highslide/ をダウンロードし、
+#    解凍したファイルの中から highslide ディレクトリ以下を丸ごと
+#    適当な位置にアップロードする
+#
+# 2. このプラグインに同梱されている bfep_snap.css のカーソルイメージの指定 URL など、
+#    環境依存部分（二カ所）を編集してアップロードする
+#
+# 3. blosxom のフレーバの head.* に上記の highslide ライブラリおよび CSS ファイルの
+#    読み込みを行う行を追加する
+# 例）※ URL 部分の記述は環境に合わせて適宜変更してください
+#
+#  <link rel="stylesheet" type="text/css"
+#    href="http://www.yourdomain.net/lib/css/bfep_snap.css" media="screen,tv" />
+#  <script type="text/javascript"
+#    src="http://www.yourdomain.net/lib/javascript/highslide/highslide.js"></script>
+#  <script type="text/javascript">
+#    hs.graphicsDir = 'http://www.yourdomain.net/lib/javascript/highslide/graphics/';
+#    window.onload = function() {
+#        hs.preloadImages(5);
+#    }
+#  </script>
+#
+# 5. blosxom のフレーバ foot.* に以下の一行を追加する
+#
+#  <div id="highslide-container"></div>
+#
+# ※ body 要素内の最後くらいが適当かと思います
+#
+# 以上の設定で highslide JS 導入は終了です。
+
+1;

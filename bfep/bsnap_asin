@@ -1,0 +1,242 @@
+# Bracket Front End Plugin for blosxom: bsnap_asin
+# Author(s) : kay <info@ellinikonblue.com>
+# Version : 2012 Mar.
+package bsnap_asin;
+
+# --------------------------------------
+# Configurable Variable
+my $associatetag   = "YourAssociateTag";   # Associate Tag
+my $subscriptionid = "YourSubscriptionID"; # Subscription ID
+my $secretkey      = "YourSecretKey";      # Secret Key
+my $xslfile        = "http://yourdomain.net/path/bsnapAsin20110801.xsl";
+
+# Cache Configuration
+my $asin_dir = "$blosxom::plugin_state_dir/asin";
+my $modify   = "24"; # hour
+
+# URL to the image for no image
+my $noImage       = "http://yourdomain.net/path/00no-image.png";
+my $noImageHeight = "130";
+my $noImageWidth  = "130";
+# --------------------------------------
+# Base URL
+my $requesturl = "http://xml-jp.amznxslt.com/onca/xml"; # for Amazon.co.jp
+
+# Constant value for deadlock routine
+my $LockName = "$asin_dir/Locked";
+my $retry    = 10;
+
+# Class for Markup
+my $class = "asinSimple";
+
+# for debug
+my $dbsw = 1; # Switch for Debug (0: off, 1: on)
+
+# ======================================
+# use lib '/your/perl/library/path'; # for PurePerl SHA.pm
+#
+use LWP::Simple;
+use LWP::UserAgent;
+use Digest::SHA qw(hmac_sha256_base64);
+# use Digest::SHA::PurePerl qw(hmac_sha256_base64); # for PurePerl SHA.pm
+use URI::Escape;
+
+sub start {
+  if (!-e $asin_dir) {
+    mkdir($asin_dir, 0755) or die "Can't creat $asin_dir : $1";
+  }
+
+  return 1;
+}
+
+sub story {
+  my ($pkg, $pattern) = @_;
+  my $cache_dir;
+  my $asinCode;
+
+  return 0 if ( $pattern !~ m/^asin:([A-Z0-9]{10})$/is );
+
+  # キャッシュ用サブディレクトリ作成
+  ## キャッシュ用サブディレクトリは、 ASIN コードの下一桁の文字を使用
+  ##（最大 36 ディレクトリを作成）
+  $asinCode = uc( $1 );
+  $cache_dir = $asin_dir.'/'.substr( $asinCode, 9, 1 );
+  if (!-e $cache_dir) {
+    mkdir($cache_dir, 0755) or die "Can't creat $cache_dir : $asinCode";
+  }
+
+  return requestAWS( $asinCode );
+}
+
+sub requestAWS { # SubRoutine to request to AWS
+  my ($asinCode) = @_;
+  my $cache      = "$asin_dir/".substr( $asinCode, 9, 1 )."/$asinCode.html";
+  my $rtn        = "";
+
+  # ロック処理待ち
+  ## ロック処理に対する待ち処理、またロックしたままになって
+  ## 180 秒以上経過しているものはロックを解除
+  if ( -e "$LockName$asinCode" ) {
+    my $r = $retry;
+
+    if ( (stat("$LockName$asinCode"))[8] + 180 < time() ) {
+      # ロックファイルのクリーニング
+      rmdir( "$LockName$asinCode" );
+    } else {
+      while ( -e "$LockName$asinCode" and $r-- > 0 ) { sleep( 1 ) };
+      return $rtn if ( $r < 1 ); # 待ちきれなかった場合は終了
+    }
+  }
+
+  # キャッシュ更新判定
+  ## キャッシュは新規作成のときでも空ファイルを作成して、
+  ## 既存キャッシュと同じアルゴリズムで作成するとともに、
+  ## 連続して AWS にリクエストがかからないようにする
+  if ( -e $cache ) {
+    if ( -M $cache > $modify /24 ) {
+      my $time = time;
+      utime( $time, $time, $cache ); # ひとまずキャッシュの更新時間を更新
+
+      refresh_cache( $asinCode, $cache );
+    }
+  } else { # 新規キャッシュ作成
+    close CACHE if ( open CACHE, "> $cache" ); # 空ファイルを作成
+
+    refresh_cache( $asinCode, $cache );
+  }
+
+  # キャッシュから読み込み
+  if ( open CACHE, "< $cache" ) {
+    $rtn = join( '', <CACHE> );
+    if ( length( $rtn ) > 1 ) { # Anti-0byte Cache
+      if ( $rtn !~ m/<Error><Code>AWS\.(.+)<\/Code>/is ) {
+        $rtn = '<div class="'. $class . '">' . $rtn . '</div>';
+      } else { # エラーが帰ってきたときの処理
+        $rtn = '<br /><br />';
+      }
+    } else { # 空の応答があったときの処理
+      $rtn = '<!-- Enpty Cache -->';
+    }
+
+    close CACHE;
+  }
+
+  return $rtn;
+}
+
+sub refresh_cache { # キャッシュ更新ルーチン本体
+  my ( $asinCode, $cache_file ) = @_;
+  my $tmp_file = "$asin_dir/".substr( $asinCode, 9, 1 )."/$asinCode.tmp";
+  my $debuf = '';
+  my $rtn   = '';
+
+  my $url = "s?https?://[-_.!~*'()a-zA-Z0-9;/?:@&=+$,%#]+";
+
+  my ( $sec, $min, $hour, $mday, $mon, $year ) = gmtime(time);
+  $mon = $mon + 1; $year = $year + 1900;
+  my $timestamp = sprintf( "%04d-%02d-%02dT%02d:%02d:%02dZ",
+    $year, $mon, $mday, $hour, $min, $sec );
+
+  my %param = (
+    AWSAccessKeyId => $subscriptionid,
+    AssociateTag   => $associatetag,
+    ContentType    => 'text/html',
+    ItemId         => $asinCode,
+    Operation      => 'ItemLookup',
+    ResponseGroup  => 'Medium',
+    Service        => 'AWSECommerceService',
+    Style          => $xslfile,
+    Timestamp      => $timestamp,
+    Version        => '2011-08-01' 
+  );
+
+  my $request = join '&',
+    map { $_.'='.URI::Escape::uri_escape_utf8( $param{ $_ } ) } sort keys %param;
+
+  # Signature を生成
+  my $u = URI->new( $requesturl );
+  my $signature = join "\n",'GET', $u->host, $u->path, $request;
+
+  $debuf .=  $signature."\n" if ( $dbsw ); # for debug
+
+  $signature = hmac_sha256_base64( $signature, $secretkey );
+  $signature .= '=' while length( $signature ) % 4; # Sign 長が 4 の倍数でないときは = を足し込む
+
+  $debuf .= "Signature: $signature\n" if ( $dbsw ); # for debug
+
+  $signature = URI::Escape::uri_escape_utf8( $signature );
+
+  # 生成した Signature を末尾に付け足してリクエスト URL を生成
+  $request = $requesturl.'?'.$request.'&Signature='.$signature;
+  $debuf .= "Request: $request\n" if ( $dbsw ); # for debug
+
+  # AWS にリクエストして結果をテンポラリに出力
+  my $ua = new LWP::UserAgent;
+  $ua->agent("bsnap_asin");
+  $ua->timeout(30);
+  my $r = $ua->mirror($request, $tmp_file);
+
+  if ( $dbsw and open DEBUG, "> $asin_dir/debug.dmp" ) { # for debug
+    $debuf .= 'Response: '.$r->status_line."\n";
+    print DEBUG $debuf;
+    close DEBUG;
+  }
+
+  if ( (stat($tmp_file))[7] > 3000 ) { # 極端に大きい応答が帰ってきた場合は無視
+    unlink( $tmp_file );
+    return 0;
+  }
+
+  # テンポラリに出力されたデータをコンバージョン
+  if ( open CACHE, "< $tmp_file" ) {
+    while ( <CACHE> ) {
+      if ( /<img\s+src="(.*?)"\s*\/?>/ ) { # 取得した画像の有効性判定
+        my $imgsrc = $1;
+        my $convtag = '<img src="' . $noImage . '" ' .
+            'height="' . $noImageHeight . 'px" ' .
+            'width="' . $noImageWidth . 'px" />';
+
+        if ( $imgsrc =~ /$url/ ) {
+          my $header;
+          my $r = $retry;
+
+          while ( $r-- > 0 ) {
+            last if ( $header = head( $imgsrc ) );
+            sleep(5);
+          }
+
+          if ( $header && $header->content_length > 820 ) {
+            # Image file less 820bytes is "No Image".
+            $convtag = '<img src="' . $imgsrc . '" />';
+          }
+        }
+
+        $_ =~ s/<img\s+src=".*?"\s*\/?>/$convtag/gs;
+      }
+
+      $_ =~ s/<br>/<br \/>/gs; # for HTML 1.0
+      $rtn .= $_;
+    }
+
+    close CACHE;
+
+    # コンバージョンしたデータをテンポラリに書き出し
+    if ( open CACHE, "> $tmp_file" ) {
+      print CACHE $rtn;
+      close CACHE;
+    }
+
+    # テンポラリデータを実際のキャッシュファイルにリネーム
+    mkdir( "$LockName$asinCode", 0755 ); # キャッシュ書き出しロック
+
+    if ( unlink( $cache_file ) ) {
+      rename( $tmp_file, $cache_file );
+    }
+
+    rmdir( "$LockName$asinCode" ); # キャッシュロック解除
+  }
+
+  return 1;
+}
+
+1;

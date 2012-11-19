@@ -1,0 +1,55 @@
+# Bracket Front End Plugin for blosxom: bsnap_tx
+# info@ellinikonblue.com
+# Version: 2007-11-23
+#
+# This script is encoded in UTF-8
+package bsnap_tx;
+
+#---------------------------------------
+# Configurable Variables
+#
+my @html_exts = ( 'html', 'htm', 'txt' );
+# Directories Settings
+my $include_dir  = "/var/www/html/blosxom/lib";
+my $html_dirname = "html"; # HTML ディレクトリ名
+# 実際のディレクトリは $include_dir/$html_dirname となります。
+#
+my $class = "snaptx"; # CSS 用クラス名
+#---------------------------------------
+# Main routine for bfep
+#
+$include_dir =~ s!/$!!;
+
+sub start {
+  # ディレクトリ設定チェックおよび準備
+  return 0 if ( !-e $include_dir );
+  if ( !-e "$include_dir/$html_dirname" ) {
+    my $mkdir_r = mkdir( "$include_dir/$html_dirname", 0755 );
+    $mkdir_r or return 0;
+  }
+
+  return 1;
+}
+
+sub story {
+  my ( $pkg, $pattern ) = @_;
+  my $exts = join( "|", ( @html_exts ) );
+  my $filename;
+  my $rtn = '';
+
+  return 0 if ( $pattern !~ m/^([\/\w\-\!\#\$\%\'\^\(\)\{\}\~]+\.$exts)$/is );
+
+  $filename = $1;
+
+  return 0 if ( !-e "$include_dir/$html_dirname/$filename" );
+  if ( open INPUT, "<$include_dir/$html_dirname/$filename" ) {
+    $rtn  = "<div class=\"$class\">\n";
+    $rtn .= join( "", <INPUT> );
+    $rtn .= "</div>";
+    close INPUT;
+  }
+
+  return $rtn;
+}
+
+1;
