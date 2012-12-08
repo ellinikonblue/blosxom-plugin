@@ -1,6 +1,6 @@
 # Bracket Front End Plugin for blosxom: bsnap_asin
 # Author(s) : kay <info@ellinikonblue.com>
-# Version : 2012 Mar.
+# Version : 2012 Nov.
 package bsnap_asin;
 
 # --------------------------------------
@@ -8,7 +8,7 @@ package bsnap_asin;
 my $associatetag   = "YourAssociateTag";   # Associate Tag
 my $subscriptionid = "YourSubscriptionID"; # Subscription ID
 my $secretkey      = "YourSecretKey";      # Secret Key
-my $xslfile        = "http://yourdomain.net/path/bsnapAsin20110801.xsl";
+my $TemplateFile   = "bsnap_asin.html";    # Template File Name(Set in $asin_dir)
 
 # Cache Configuration
 my $asin_dir = "$blosxom::plugin_state_dir/asin";
@@ -16,8 +16,8 @@ my $modify   = "24"; # hour
 
 # URL to the image for no image
 my $noImage       = "http://yourdomain.net/path/00no-image.png";
-my $noImageHeight = "130";
-my $noImageWidth  = "130";
+# my $noImageHeight = "130";
+# my $noImageWidth  = "130";
 # --------------------------------------
 # Base URL
 my $requesturl = "http://xml-jp.amznxslt.com/onca/xml"; # for Amazon.co.jp
@@ -33,12 +33,11 @@ my $class = "asinSimple";
 my $dbsw = 1; # Switch for Debug (0: off, 1: on)
 
 # ======================================
-# use lib '/your/perl/library/path'; # for PurePerl SHA.pm
 #
 use LWP::Simple;
 use LWP::UserAgent;
 use Digest::SHA qw(hmac_sha256_base64);
-# use Digest::SHA::PurePerl qw(hmac_sha256_base64); # for PurePerl SHA.pm
+# use Digest::SHA::PurePerl qw(hmac_sha256_base64);
 use URI::Escape;
 
 sub start {
@@ -108,16 +107,6 @@ sub requestAWS { # SubRoutine to request to AWS
   # キャッシュから読み込み
   if ( open CACHE, "< $cache" ) {
     $rtn = join( '', <CACHE> );
-    if ( length( $rtn ) > 1 ) { # Anti-0byte Cache
-      if ( $rtn !~ m/<Error><Code>AWS\.(.+)<\/Code>/is ) {
-        $rtn = '<div class="'. $class . '">' . $rtn . '</div>';
-      } else { # エラーが帰ってきたときの処理
-        $rtn = '<br /><br />';
-      }
-    } else { # 空の応答があったときの処理
-      $rtn = '<!-- Enpty Cache -->';
-    }
-
     close CACHE;
   }
 
@@ -129,6 +118,7 @@ sub refresh_cache { # キャッシュ更新ルーチン本体
   my $tmp_file = "$asin_dir/".substr( $asinCode, 9, 1 )."/$asinCode.tmp";
   my $debuf = '';
   my $rtn   = '';
+  my %detail;
 
   my $url = "s?https?://[-_.!~*'()a-zA-Z0-9;/?:@&=+$,%#]+";
 
@@ -140,12 +130,10 @@ sub refresh_cache { # キャッシュ更新ルーチン本体
   my %param = (
     AWSAccessKeyId => $subscriptionid,
     AssociateTag   => $associatetag,
-    ContentType    => 'text/html',
     ItemId         => $asinCode,
     Operation      => 'ItemLookup',
-    ResponseGroup  => 'Medium',
+    ResponseGroup  => 'Medium,Offers',
     Service        => 'AWSECommerceService',
-    Style          => $xslfile,
     Timestamp      => $timestamp,
     Version        => '2011-08-01' 
   );
@@ -182,43 +170,52 @@ sub refresh_cache { # キャッシュ更新ルーチン本体
     close DEBUG;
   }
 
-  if ( (stat($tmp_file))[7] > 3000 ) { # 極端に大きい応答が帰ってきた場合は無視
-    unlink( $tmp_file );
-    return 0;
-  }
-
   # テンポラリに出力されたデータをコンバージョン
   if ( open CACHE, "< $tmp_file" ) {
-    while ( <CACHE> ) {
-      if ( /<img\s+src="(.*?)"\s*\/?>/ ) { # 取得した画像の有効性判定
-        my $imgsrc = $1;
-        my $convtag = '<img src="' . $noImage . '" ' .
-            'height="' . $noImageHeight . 'px" ' .
-            'width="' . $noImageWidth . 'px" />';
+    $rtn = join( '', <CACHE> );
+    close CACHE;
 
-        if ( $imgsrc =~ /$url/ ) {
-          my $header;
-          my $r = $retry;
+    if ( $rtn =~ /<Errors>.*?<Message>([^<]*)<\/Message>/ ) {
+      # エラーが帰ってきたとき、エラーメッセージを保存
+      $detail{"ErrorMsg"} = $1;
+    } else {
+      # 正常に応答があったとき、表示に必要なデータを抜き取り
+      $detail{"PageURL"}      = $1 if ( $rtn =~ /<DetailPageURL>([^<]*)<\/DetailPageURL>/ );
+      $detail{"ProductName"}  = $1 if ( $rtn =~ /<Title>([^<]*)<\/Title>/ );
+      $detail{"MediumImage"}  = $1 if ( $rtn =~ /<MediumImage>[^<]*?<URL>([^<]*)<\/URL>/ );
+      $detail{"Author"}       = $1 if ( $rtn =~ /<Author>([^<]*)<\/Author>/ );
+      $detail{"Artist"}       = $1 if ( $rtn =~ /<Artist>([^<]*)<\/Artist>/ );
+      $detail{"Manufacturer"} = $1 if ( $rtn =~ /<Manufacturer>([^<]*)<\/Manufacturer>/ );
+      $detail{"Price"}        = $1 if ( $rtn =~ /<OfferListing>.*?<FormattedPrice>([^<]*)<\/FormattedPrice>/ );
 
-          while ( $r-- > 0 ) {
-            last if ( $header = head( $imgsrc ) );
-            sleep(5);
-          }
-
-          if ( $header && $header->content_length > 820 ) {
-            # Image file less 820bytes is "No Image".
-            $convtag = '<img src="' . $imgsrc . '" />';
-          }
-        }
-
-        $_ =~ s/<img\s+src=".*?"\s*\/?>/$convtag/gs;
+      if ( length( $detail{"MediumImage"} ) < 1 ) { # Medium サイズのイメージがなかったときの処理
+        $detail{"MediumImage"} = $noImage;
       }
-
-      $_ =~ s/<br>/<br \/>/gs; # for HTML 1.0
-      $rtn .= $_;
+      if ( length( $detail{"Author"} ) > 0 ) { # 書籍の場合、著者表示のための処理
+        $detail{"Author"} .= ' 著<br />';
+      } else {
+        if ( length( $detail{"Artist"} ) > 0 ) {
+          $detail{"Artist"} .= '<br />';
+        } # 著者名かアーティスト名があるとどちらかに改行が付加されます
+      }
     }
 
-    close CACHE;
+    $rtn = '';
+
+    if ( defined( $detail{"ErrorMsg"} ) ) {
+      # 異常系処理
+      ## 表示を乱さないために、div 要素を入れず、改行だけをキャッシュ
+      $rtn = '<!-- '.$detail{"ErrorMsg"}.'--><br /><br />';
+    } else {
+      # 正常系処理
+      ## 装飾用の div はここで挿入（キャッシュにも記録※旧バージョンから処理を変更）
+      if ( open CACHE, "< $asin_dir/$TemplateFile" ) {
+        $rtn = join( '', <CACHE> );
+        close CACHE;
+      }
+      $rtn =~ s/\$(\w+)/$detail{$1}/ge;
+      $rtn = '<div class="'. $class . '">' . $rtn . '</div>';
+    }
 
     # コンバージョンしたデータをテンポラリに書き出し
     if ( open CACHE, "> $tmp_file" ) {
