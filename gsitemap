@@ -1,0 +1,94 @@
+# Blosxom Plugin: gsitemap 2007
+# Author: kay <info@ellinikonblue.com>
+# Version: 2007-09-06
+#
+# This script is encoded in UTF-8
+# 【注意事項】
+# ※ このプラグインの動作には entries_kache プラグインが必須です。
+package gsitemap;
+
+#---------------------------------------
+# Confiurable Variables
+#
+my $sitemapfile = '/your/path/sitemap.xml';                         # サイトマップ出力先
+my $entries_idx = "$blosxom::plugin_state_dir/entries_kache.index"; # インデックスファイル
+
+my $priority   = 0.8;      # Top page priority(Google default is 0.5)
+my $changefreq = 'weekly'; # 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
+#---------------------------------------
+# Main routine for blosxom
+#
+use File::stat;
+use Time::Local;
+
+sub start {
+  # インデックスファイルが存在しない場合は、機能を停止します。
+  return 0 if ( !-e $entries_idx );
+
+  return 1;
+}
+
+sub end {
+  my $files;
+
+  # 以下の条件が成立する場合はサイトマップファイルの生成は行いません
+  # 3. すでにサイトマップファイルが存在し、インデックスファイルが更新されていない
+  # 2. インデックスファイルの読み込みに失敗
+  return 0 if ( -e $sitemapfile and stat( $entries_idx )->mtime <= stat( $sitemapfile )->mtime );
+  return 0 if ( !($files = load_filedata()) );
+
+  # サイトマップ出力
+  if ( open OUTPUT, ">$sitemapfile" ) {
+    my $path, $datestr;
+    my $sec, $min, $hour, $mday, $mon, $year;
+    my $z     = 0 - timelocal(0, 0, 0, 1, 0, 70);
+    my $zhour = $z / 3600;
+    my $zmin  = (abs( $z ) % 3600) / 60;
+
+    print OUTPUT '<?xml version="1.0" encoding="utf-8"?>'."\n";
+    print OUTPUT '<urlset xmlns="http://www.google.com/schemas/sitemap/0.84">'."\n";
+    print OUTPUT "  <url>\n    <loc>$blosxom::url/</loc>\n";
+    print OUTPUT "    <changefreq>$changefreq</changefreq>\n";
+    print OUTPUT "    <priority>$priority</priority>\n  </url>\n\n";
+
+    foreach my $dir ( sort {$a cmp $b} keys %$files ) {
+      $dir  =~ m/$blosxom::datadir(.*)/;
+      $path = "$blosxom::url$1";
+      $path =~ s/\.\w+$/\.$blosxom::default_flavour/;
+      ( $sec, $min, $hour, $mday, $mon, $year ) = localtime( $$files{$dir} );
+      $datestr = sprintf( "%04d-%02d-%02dT%02d:%02d:%02d%+03d:%02d",
+        $year + 1900, $mon + 1, $mday, $hour, $min, $sec, $zhour, $zmin );
+
+      print OUTPUT "  <url>\n    <loc>$path</loc>\n";
+      print OUTPUT "    <lastmod>$datestr$tz_offset</lastmod>\n";
+      print OUTPUT "  </url>\n";
+    }
+    print OUTPUT "</urlset>\n";
+
+    close OUTPUT;
+  }
+
+  return 1;
+}
+#---------------------------------------
+# Some sub routine
+#
+sub load_filedata { # インデックスファイル読み込み用サブルーチン
+  my %files;
+
+  if ( open INPUT, "<$entries_idx" ) {
+    while ( my $line = <INPUT> ) {
+      if ( $line =~ /\s*'?(.*?)'?\s*=>\s*(\d*),?/ ) {
+        $files{$1} = $2;
+      }
+    }
+
+    close INPUT;
+  } else {
+    return 0;
+  }
+
+  return \%files;
+}
+
+1;

@@ -1,0 +1,25 @@
+# Blosxom Plugin : jasin
+# Author(s) : kay <info@ellinikonblue.com>
+# Version : 2008 Mar
+
+package jasin;
+
+# --------------------------------------
+# Configurable Variable
+my $associatetag = "ellinikonbcom-22";     # Associate Tag
+my $targeturl    = "http://www.amazon.co.jp/exec/obidos/ASIN/"; # for Amazon.co.jp
+
+# ======================================
+sub start {
+  return 1;
+}
+
+sub story {
+  my ($pkg, $path, $filename, $story_ref, $title_ref, $body_ref) = @_;
+
+  $$body_ref =~ s!<a\s+href="asin:([A-Z0-9]{10})"\s*>!'<a href="'."$targeturl$1/$associatetag/ref=nosim/".'">'!gei;
+
+  return 1;
+}
+
+1;

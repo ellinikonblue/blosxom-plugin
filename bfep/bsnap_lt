@@ -1,0 +1,81 @@
+# Bracket Front End Plugin for blosxom: bsnap_lt
+# Author: kay <info@ellinikonblue.com>
+# Version: 2008-12-03
+#
+# This script is encoded in UTF-8
+# 【注意事項】
+# ※ このプラグインには Lightbox2 ライブラリ (JavaScript) が必要です。
+# Lightbox2 http://www.lokeshdhakar.com/projects/lightbox2/
+package bsnap_lt;
+
+#---------------------------------------
+# Configurable Variables
+#
+my @image_exts = ( 'jpg', 'jpeg', 'gif', 'png' );
+# Directories Settings
+my $include_dir = "/your/path/library";
+my $include_url = "http://yourdomain.net/path/library";
+#
+my $image_dirname     = "image";     # 画像ディレクトリ名
+my $thumbnail_dirname = "thumbnail"; # サムネイルディレクトリ名
+# 実際には各ディレクトリは、
+#   画像用ディレクトリが       $include_dir/$image_dirname
+#   サムネイル用ディレクトリが $include_dir/$image_dirname/$thumbnail_dirname
+# となります。
+#
+my $class = "snaplt"; # CSS 用クラス名
+my $grouping = 1; # イメージセット設定： 0: なし, 1: エントリごと, 2: ページごと
+#---------------------------------------
+# Main routine for bfep
+#
+$include_dir =~ s!/$!!; $include_url =~ s!/$!!;
+
+sub start {
+  # ディレクトリ設定チェックおよび準備
+  return 0 if ( !-e $include_dir );
+  if ( !-e "$include_dir/$image_dirname" ) {
+    my $mkdir_r = mkdir( "$include_dir/$image_dirname", 0755 );
+    $mkdir_r or return 0;
+  }
+  if ( !-e "$include_dir/$image_dirname/$thumbnail_dirname" ) {
+    my $mkdir_r = mkdir( "$include_dir/$image_dirname/$thumbnail_dirname", 0755 );
+    $mkdir_r or return 0;
+  }
+
+  return 1;
+}
+
+sub story {
+  my ( $pkg, $pattern ) = @_;
+  my $exts = join( "|", @image_exts );
+  my $filename;
+  my $rtn = '';
+
+  return 0 if ( $pattern !~ m/^([\/\w\-\!\#\$\%\'\^\(\)\{\}\~]+\.(?:$exts))$/is );
+
+  $filename = $1;
+
+  return 0 if ( !-e "$include_dir/$image_dirname/$filename" );
+
+  $rtn  = "<div class=\"$class\">\n";
+  if ( -e "$include_dir/$image_dirname/$thumbnail_dirname/$filename" ) {
+  # イメージセット
+    my $imageset;
+    $imageset = "[$blosxom::fn]" if ( $grouping == 1 );
+    $imageset = "[$blosxom::blog_title]" if ( $grouping == 2 );
+    $imageset = "" if ( $grouping == 0 );
+  # サムネイル画像がある場合
+    $rtn .= "  <a href=\"$include_url/$image_dirname/$filename\"\n";
+    $rtn .= '    rel="lightbox'. $imageset .'">'."<img\n";
+    $rtn .= "    src=\"$include_url/$image_dirname/$thumbnail_dirname/$filename\"\n";
+    $rtn .= "    alt=\"Image:$filename\" /></a>\n";
+  } else {
+  # サムネイル画像がない場合
+    $rtn .= "  <img src=\"$include_url/$image_dirname/$filename\" alt=\"Image:$filename\" />\n";
+  }
+  $rtn .= "</div>";
+
+  return $rtn;
+}
+
+1;

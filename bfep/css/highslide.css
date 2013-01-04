@@ -1,0 +1,60 @@
+/* CSS Definition File for snap_hs plugin
+ * Version 2007 Nov.
+ */
+.highslide {
+    cursor: url(http://yourdomain.net/path/library/highslide/graphics/zoomin.cur), pointer;
+    outline: none;
+}
+
+.highslide img {
+}
+
+.highslide:hover img {
+}
+
+.highslide-image {
+    border: 10px solid #FFFFFF; /* 白 */
+}
+
+.highslide-image-blur {}
+
+.highslide-caption {
+    display: none;
+    border: 5px solid #FFFFFF; /* 白 */
+    border-top: none;
+    padding: 5px;
+    background-color: #FFFFFF; /* 白 */
+}
+
+.highslide-loading {
+    display: block;
+    color: #FFFFFF; background-color: #000000; /* 文字色：白 背景色：黒 */
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 3px;
+    border-top:    1px solid #FFFFFF; /* 白 */
+    border-bottom: 1px solid #FFFFFF; /* 白 */
+}
+
+a.highslide-credits,
+a.highslide-credits i {
+    padding: 2px;
+    color: #C0C0C0; /* 銀色 */
+    text-decoration: none;
+    font-size: 10px;
+}
+
+a.highslide-credits:hover,
+a.highslide-credits:hover i {
+    color: #FFFFFF; background-color: #808080; /* 文字色：白 背景色：灰色 */
+}
+
+.highslide-display-block {
+    display: block;
+}
+
+.highslide-display-none {
+    display: none;
+}

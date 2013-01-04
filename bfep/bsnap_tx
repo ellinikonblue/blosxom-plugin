@@ -1,5 +1,5 @@
 # Bracket Front End Plugin for blosxom: bsnap_tx
-# info@ellinikonblue.com
+# Author: kay <info@ellinikonblue.com>
 # Version: 2007-11-23
 #
 # This script is encoded in UTF-8
@@ -10,7 +10,7 @@ package bsnap_tx;
 #
 my @html_exts = ( 'html', 'htm', 'txt' );
 # Directories Settings
-my $include_dir  = "/var/www/html/blosxom/lib";
+my $include_dir  = "/your/path/library";
 my $html_dirname = "html"; # HTML ディレクトリ名
 # 実際のディレクトリは $include_dir/$html_dirname となります。
 #

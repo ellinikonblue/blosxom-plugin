@@ -1,5 +1,5 @@
 # Bracket Front End Plugin for blosxom: bsnap_hs
-# info@ellinikonblue.com
+# Author: kay <info@ellinikonblue.com>
 # Version: 2007-09-04
 #
 # This script is encoded in UTF-8
@@ -13,8 +13,8 @@ package bsnap_hs;
 #
 my @image_exts = ( 'jpg', 'jpeg', 'png' , 'gif' );
 # Directories Settings
-my $include_dir = "/var/www/html/blosxom/lib";
-my $include_url = "http://www.ellinikonblue.com/blosxom/lib";
+my $include_dir = "/your/path/library";
+my $include_url = "http://yourdomain.net/path/library";
 #
 my $image_dirname     = "image";     # 画像ディレクトリ名
 my $thumbnail_dirname = "thumbnail"; # サムネイルディレクトリ名
@@ -80,7 +80,7 @@ sub story {
 #    解凍したファイルの中から highslide ディレクトリ以下を丸ごと
 #    適当な位置にアップロードする
 #
-# 2. このプラグインに同梱されている bfep_snap.css のカーソルイメージの指定 URL など、
+# 2. このプラグイン向けの CSS ファイル highslide.css のカーソルイメージの指定 URL など、
 #    環境依存部分（二カ所）を編集してアップロードする
 #
 # 3. blosxom のフレーバの head.* に上記の highslide ライブラリおよび CSS ファイルの
