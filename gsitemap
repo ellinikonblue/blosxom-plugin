@@ -1,6 +1,6 @@
 # Blosxom Plugin: gsitemap 2007
 # Author: kay <info@ellinikonblue.com>
-# Version: 2007-09-06
+# Version: 2013-01-19
 #
 # This script is encoded in UTF-8
 # 【注意事項】
@@ -43,13 +43,15 @@ sub end {
     my $sec, $min, $hour, $mday, $mon, $year;
     my $z     = 0 - timelocal(0, 0, 0, 1, 0, 70);
     my $zhour = $z / 3600;
-    my $zmin  = (abs( $z ) % 3600) / 60;
+    my $zmin  = ( abs( $z ) % 3600) / 60;
 
     print OUTPUT '<?xml version="1.0" encoding="utf-8"?>'."\n";
-    print OUTPUT '<urlset xmlns="http://www.google.com/schemas/sitemap/0.84">'."\n";
-    print OUTPUT "  <url>\n    <loc>$blosxom::url/</loc>\n";
+    print OUTPUT '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
+    print OUTPUT "  <url>\n";
+    print OUTPUT "    <loc>$blosxom::url/</loc>\n";
     print OUTPUT "    <changefreq>$changefreq</changefreq>\n";
-    print OUTPUT "    <priority>$priority</priority>\n  </url>\n\n";
+    print OUTPUT "    <priority>$priority</priority>\n";
+    print OUTPUT "  </url>\n";
 
     foreach my $dir ( sort {$a cmp $b} keys %$files ) {
       $dir  =~ m/$blosxom::datadir(.*)/;
@@ -59,7 +61,8 @@ sub end {
       $datestr = sprintf( "%04d-%02d-%02dT%02d:%02d:%02d%+03d:%02d",
         $year + 1900, $mon + 1, $mday, $hour, $min, $sec, $zhour, $zmin );
 
-      print OUTPUT "  <url>\n    <loc>$path</loc>\n";
+      print OUTPUT "  <url>\n";
+      print OUTPUT "    <loc>$path</loc>\n";
       print OUTPUT "    <lastmod>$datestr$tz_offset</lastmod>\n";
       print OUTPUT "  </url>\n";
     }

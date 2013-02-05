@@ -13,42 +13,42 @@
 }
 
 .highslide-image {
-    border: 10px solid #FFFFFF; /* ”’ */
+    border: 10px solid #FFFFFF; /* ç™½ */
 }
 
 .highslide-image-blur {}
 
 .highslide-caption {
     display: none;
-    border: 5px solid #FFFFFF; /* ”’ */
+    border: 5px solid #FFFFFF; /* ç™½ */
     border-top: none;
     padding: 5px;
-    background-color: #FFFFFF; /* ”’ */
+    background-color: #FFFFFF; /* ç™½ */
 }
 
 .highslide-loading {
     display: block;
-    color: #FFFFFF; background-color: #000000; /* •¶šFF”’ ”wŒiFF• */
+    color: #FFFFFF; background-color: #000000; /* æ–‡å­—è‰²ï¼šç™½ èƒŒæ™¯è‰²ï¼šé»’ */
     font-size: 9px;
     font-weight: bold;
     text-transform: uppercase;
     text-decoration: none;
     padding: 3px;
-    border-top:    1px solid #FFFFFF; /* ”’ */
-    border-bottom: 1px solid #FFFFFF; /* ”’ */
+    border-top:    1px solid #FFFFFF; /* ç™½ */
+    border-bottom: 1px solid #FFFFFF; /* ç™½ */
 }
 
 a.highslide-credits,
 a.highslide-credits i {
     padding: 2px;
-    color: #C0C0C0; /* ‹âF */
+    color: #C0C0C0; /* éŠ€è‰² */
     text-decoration: none;
     font-size: 10px;
 }
 
 a.highslide-credits:hover,
 a.highslide-credits:hover i {
-    color: #FFFFFF; background-color: #808080; /* •¶šFF”’ ”wŒiFFŠDF */
+    color: #FFFFFF; background-color: #808080; /* æ–‡å­—è‰²ï¼šç™½ èƒŒæ™¯è‰²ï¼šç°è‰² */
 }
 
 .highslide-display-block {
